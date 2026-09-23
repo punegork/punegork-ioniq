@@ -133,7 +133,7 @@ class TripRecordingService : Service() {
 
     private suspend fun persistLocationSample(tripId: Long, location: LocationTelemetry) {
         val v = latestVehicle
-        app.database.telemetrySampleDao().insert(
+        app.database.sampleDao().insert(
             TelemetrySampleEntity(
                 tripId = tripId,
                 timestampMs = location.timestampMs,
