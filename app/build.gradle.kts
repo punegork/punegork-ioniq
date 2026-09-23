@@ -12,8 +12,8 @@ android {
         applicationId = "com.punegork.ioniqtelemetry"
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-aa"
+        versionCode = 4
+        versionName = "0.4.0-vgate-beta"
     }
 
     buildFeatures {
