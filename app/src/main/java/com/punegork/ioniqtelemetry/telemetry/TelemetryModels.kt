@@ -52,5 +52,8 @@ data class LiveTelemetry(
     val location: LocationTelemetry? = null,
     val recording: Boolean = false,
     val activeTripId: Long? = null,
-    val sourceName: String = "DEMO OBD"
+    val sourceName: String = "DEMO OBD",
+    val tripDistanceKm: Double = 0.0,
+    val tripNetEnergyKWh: Double = 0.0,
+    val tripConsumptionKwh100Km: Double? = null
 )
