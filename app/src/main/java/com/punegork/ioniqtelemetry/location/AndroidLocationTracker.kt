@@ -2,6 +2,7 @@ package com.punegork.ioniqtelemetry.location
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Looper
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -42,7 +43,7 @@ class AndroidLocationTracker(context: Context) {
             }
         }
 
-        client.requestLocationUpdates(request, callback, null)
+        client.requestLocationUpdates(request, callback, Looper.getMainLooper())
         awaitClose { client.removeLocationUpdates(callback) }
     }
 }
