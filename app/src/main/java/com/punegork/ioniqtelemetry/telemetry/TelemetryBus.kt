@@ -19,4 +19,15 @@ class TelemetryBus {
     fun recording(recording: Boolean, tripId: Long?) {
         _state.update { it.copy(recording = recording, activeTripId = tripId) }
     }
+
+    fun tripStats(distanceKm: Double, netEnergyKWh: Double) {
+        val consumption = if (distanceKm > 0.1) netEnergyKWh / distanceKm * 100.0 else null
+        _state.update {
+            it.copy(
+                tripDistanceKm = distanceKm,
+                tripNetEnergyKWh = netEnergyKWh,
+                tripConsumptionKwh100Km = consumption
+            )
+        }
+    }
 }
