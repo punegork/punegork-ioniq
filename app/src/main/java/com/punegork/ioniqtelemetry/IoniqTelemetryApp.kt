@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.room.Room
 import com.punegork.ioniqtelemetry.data.AppDatabase
 import com.punegork.ioniqtelemetry.location.AndroidLocationTracker
-import com.punegork.ioniqtelemetry.telemetry.MockObdTelemetrySource
+import com.punegork.ioniqtelemetry.obd.ObdController
 import com.punegork.ioniqtelemetry.telemetry.TelemetryBus
 
 class IoniqTelemetryApp : Application() {
@@ -18,6 +18,5 @@ class IoniqTelemetryApp : Application() {
 
     val telemetryBus by lazy { TelemetryBus() }
     val locationTracker by lazy { AndroidLocationTracker(applicationContext) }
-
-    val obdSource by lazy { MockObdTelemetrySource() }
+    val obdController by lazy { ObdController(applicationContext) }
 }
