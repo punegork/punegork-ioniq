@@ -65,6 +65,9 @@ private abstract class LiveTelemetryScreen(carContext: CarContext) : Screen(carC
 
     protected fun f(v: Double?, digits: Int = 1): String =
         v?.let { String.format(Locale.US, "%.${digits}f", it) } ?: "—"
+
+    protected fun signed(v: Double?, unit: String, digits: Int = 1): String =
+        v?.let { String.format(Locale.US, "%+.${digits}f %s", it, unit) } ?: "— $unit"
 }
 
 private class TelemetryDashboardScreen(carContext: CarContext) : LiveTelemetryScreen(carContext) {
@@ -81,15 +84,15 @@ private class TelemetryDashboardScreen(carContext: CarContext) : LiveTelemetrySc
             .addItem(
                 metric(
                     "BATARYA",
-                    "${f(v.batteryMinTempC, 0)} / ${f(v.batteryAvgTempC, 0)} / ${f(v.batteryMaxTempC, 0)} °C",
+                    "${f(v.batteryMinTempC, 0)} / ${f(v.batteryMaxTempC, 0)} °C",
                     onClick = { screenManager.push(TelemetryDetailsScreen(carContext)) }
                 )
             )
             .addItem(
                 metric(
-                    "MOTOR / INV",
-                    "${f(v.rearMotorTempC, 0)}° / ${f(v.inverterTempC, 0)}°",
-                    onClick = { screenManager.push(TelemetryDetailsScreen(carContext)) }
+                    "N MODE",
+                    "CUSTOM 1",
+                    onClick = { screenManager.push(PerformanceScreen(carContext)) }
                 )
             )
             .build()
@@ -106,9 +109,89 @@ private class TelemetryDashboardScreen(carContext: CarContext) : LiveTelemetrySc
         if (onClick != null) b.setOnClickListener { onClick() }
         return b.build()
     }
+}
 
-    private fun signed(v: Double?, unit: String): String =
-        v?.let { String.format(Locale.US, "%+.1f %s", it, unit) } ?: "— $unit"
+private class PerformanceScreen(carContext: CarContext) : LiveTelemetryScreen(carContext) {
+    override fun onGetTemplate(): Template {
+        val live = snapshot()
+        val v = live.vehicle
+        val elevation = live.location?.altitudeM
+
+        val list = ItemList.Builder()
+            .addItem(tile("SOC", "${f(v.socPercent, 0)} %"))
+            .addItem(tile("ANLIK GÜÇ", signed(v.packPowerKw, "kW")))
+            .addItem(tile("BATARYA SIC.", "${f(v.batteryAvgTempC ?: v.batteryMaxTempC, 0)} °C"))
+            .addItem(tile("RPM", f(v.rearMotorRpm, 0)))
+            .addItem(tile("ORT. TÜKETİM", "${f(live.tripConsumptionKwh100Km, 1)} kWh/100"))
+            .addItem(
+                tile(
+                    "G-KUVVET",
+                    "Lat ${signed(v.lateralG, "g", 2)} • Long ${signed(v.longitudinalG, "g", 2)}",
+                    onClick = { screenManager.push(PerformanceDetailsScreen(carContext)) }
+                )
+            )
+            .build()
+
+        val title = buildString {
+            append("CUSTOM 1")
+            elevation?.let { append(" • ${f(it, 0)} m") }
+        }
+
+        return GridTemplate.Builder()
+            .setTitle(title)
+            .setHeaderAction(Action.BACK)
+            .setSingleList(list)
+            .build()
+    }
+
+    private fun tile(title: String, value: String, onClick: (() -> Unit)? = null): GridItem {
+        val b = GridItem.Builder().setTitle(title).setText(value)
+        if (onClick != null) b.setOnClickListener { onClick() }
+        return b.build()
+    }
+}
+
+private class PerformanceDetailsScreen(carContext: CarContext) : LiveTelemetryScreen(carContext) {
+    override fun onGetTemplate(): Template {
+        val live = snapshot()
+        val v = live.vehicle
+
+        val rows = ItemList.Builder()
+            .addItem(
+                Row.Builder()
+                    .setTitle("g-Kuvvet")
+                    .addText("Lateral ${signed(v.lateralG, "g", 3)}")
+                    .addText("Longitudinal ${signed(v.longitudinalG, "g", 3)}")
+                    .build()
+            )
+            .addItem(
+                Row.Builder()
+                    .setTitle("Sürüş")
+                    .addText("${f(live.tripDistanceKm, 1)} km • ${f(live.tripNetEnergyKWh, 2)} kWh net")
+                    .addText("Ort. ${f(live.tripConsumptionKwh100Km, 1)} kWh/100 km")
+                    .build()
+            )
+            .addItem(
+                Row.Builder()
+                    .setTitle("Rakım")
+                    .addText("${f(live.location?.altitudeM, 0)} m")
+                    .build()
+            )
+            .addItem(
+                Row.Builder()
+                    .setTitle("Motor / inverter")
+                    .addText("Motor ${f(v.rearMotorTempC, 0)} °C • ${f(v.rearMotorRpm, 0)} rpm")
+                    .addText("Inverter ${f(v.inverterTempC, 0)} °C")
+                    .build()
+            )
+            .build()
+
+        return ListTemplate.Builder()
+            .setTitle("PERFORMANCE")
+            .setHeaderAction(Action.BACK)
+            .setSingleList(rows)
+            .build()
+    }
 }
 
 private class TelemetryDetailsScreen(carContext: CarContext) : LiveTelemetryScreen(carContext) {
@@ -164,9 +247,6 @@ private class TelemetryDetailsScreen(carContext: CarContext) : LiveTelemetryScre
             .setSingleList(rows)
             .build()
     }
-
-    private fun signed(v: Double?, unit: String, digits: Int): String =
-        v?.let { String.format(Locale.US, "%+.${digits}f %s", it, unit) } ?: "— $unit"
 
     private fun state(v: Boolean?): String = when (v) {
         true -> "Açık"
