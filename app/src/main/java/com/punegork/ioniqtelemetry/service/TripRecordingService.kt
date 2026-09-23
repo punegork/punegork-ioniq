@@ -16,6 +16,7 @@ import com.punegork.ioniqtelemetry.data.TripEntity
 import com.punegork.ioniqtelemetry.telemetry.LocationTelemetry
 import com.punegork.ioniqtelemetry.telemetry.TripAccumulator
 import com.punegork.ioniqtelemetry.telemetry.VehicleTelemetry
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,7 +34,14 @@ class TripRecordingService : Service() {
         private const val NOTIFICATION_ID = 51
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        android.util.Log.e("IoniqTelemetry", "Trip service coroutine failed", throwable)
+        app.telemetryBus.recording(false, null)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + exceptionHandler)
     private var recordingJob: Job? = null
 
     private lateinit var app: IoniqTelemetryApp
@@ -61,6 +69,12 @@ class TripRecordingService : Service() {
     }
 
     private fun startRecording() {
+        distanceKm = 0.0
+        movingDurationSeconds = 0L
+        maxSpeedKph = 0.0
+        latestVehicle = VehicleTelemetry()
+        latestLocation = null
+        lastDistanceLocation = null
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
