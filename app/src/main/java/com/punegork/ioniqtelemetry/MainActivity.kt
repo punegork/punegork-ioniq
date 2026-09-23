@@ -32,13 +32,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.punegork.ioniqtelemetry.data.TripEntity
+import com.punegork.ioniqtelemetry.obd.ObdMode
+import com.punegork.ioniqtelemetry.obd.ObdUiState
 import com.punegork.ioniqtelemetry.service.TripRecordingService
 import com.punegork.ioniqtelemetry.telemetry.LiveTelemetry
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -51,7 +55,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val live by app.telemetryBus.state.collectAsState()
+                val obd by app.obdController.state.collectAsState()
                 val trips by app.database.tripDao().observeAll().collectAsState(initial = emptyList())
+                val uiScope = rememberCoroutineScope()
                 var tab by remember { mutableIntStateOf(0) }
 
                 val permissionsLauncher = rememberLauncherForActivityResult(
@@ -86,6 +92,10 @@ class MainActivity : ComponentActivity() {
                         0 -> Dashboard(
                             modifier = Modifier.padding(padding),
                             live = live,
+                            obd = obd,
+                            onSelectDemo = { app.obdController.selectMode(ObdMode.DEMO) },
+                            onSelectVgate = { app.obdController.selectMode(ObdMode.VGATE_WIFI) },
+                            onTestVgate = { uiScope.launch { app.obdController.probeVgate() } },
                             onStart = {
                                 if (hasLocationPermission()) startTripService()
                                 else {
@@ -132,6 +142,10 @@ class MainActivity : ComponentActivity() {
 private fun Dashboard(
     modifier: Modifier,
     live: LiveTelemetry,
+    obd: ObdUiState,
+    onSelectDemo: () -> Unit,
+    onSelectVgate: () -> Unit,
+    onTestVgate: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit
 ) {
@@ -143,7 +157,49 @@ private fun Dashboard(
     ) {
         item {
             Text("IONIQ 5 Telemetry", style = MaterialTheme.typography.headlineMedium)
-            Text("Kaynak: ${live.sourceName} — DEMO OBD değerleri sentetiktir.")
+            Text(
+                if (obd.mode == ObdMode.DEMO)
+                    "Kaynak: DEMO • OBD değerleri sentetik"
+                else
+                    "Kaynak: VGATE WIFI • READ ONLY"
+            )
+        }
+        item {
+            Card(Modifier.fillMaxWidth()) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("OBD bağlantısı", style = MaterialTheme.typography.titleMedium)
+                    Text(obd.status)
+                    obd.adapterId?.let { Text("Adapter: $it") }
+                    obd.lastProbeSummary?.let { Text("Test: $it") }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onSelectDemo,
+                            enabled = obd.mode != ObdMode.DEMO && !live.recording
+                        ) { Text("DEMO") }
+
+                        Button(
+                            onClick = onSelectVgate,
+                            enabled = obd.mode != ObdMode.VGATE_WIFI && !live.recording
+                        ) { Text("VGATE WIFI") }
+                    }
+
+                    Button(
+                        onClick = onTestVgate,
+                        enabled = obd.mode == ObdMode.VGATE_WIFI && !live.recording
+                    ) {
+                        Text("Vgate + BMS test")
+                    }
+
+                    if (obd.mode == ObdMode.VGATE_WIFI) {
+                        Text("Wi‑Fi: Vgate ağına bağlı ol. Hedef 192.168.0.10:35000.")
+                        Text("Güvenlik: sadece diagnostik okuma; ECU'ya yazma/coding komutu yok.")
+                    }
+                }
+            }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
