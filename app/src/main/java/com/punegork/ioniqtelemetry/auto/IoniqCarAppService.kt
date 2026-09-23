@@ -20,7 +20,6 @@ import com.punegork.ioniqtelemetry.telemetry.LiveTelemetry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -60,11 +59,6 @@ private abstract class LiveTelemetryScreen(carContext: CarContext) : Screen(carC
                 }
             }
         }
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
     }
 
     protected fun snapshot(): LiveTelemetry = app.telemetryBus.state.value
