@@ -97,10 +97,11 @@ class TripRecordingService : Service() {
             app.telemetryBus.tripStats(0.0, 0.0)
 
             launch {
-                app.obdSource.stream().collect { vehicle ->
+                val obdSource = app.obdController.source()
+                obdSource.stream().collect { vehicle ->
                     latestVehicle = vehicle
                     accumulator?.addVehicle(vehicle)
-                    app.telemetryBus.vehicle(vehicle, app.obdSource.sourceName)
+                    app.telemetryBus.vehicle(vehicle, obdSource.sourceName)
                     publishTripStats()
                 }
             }
