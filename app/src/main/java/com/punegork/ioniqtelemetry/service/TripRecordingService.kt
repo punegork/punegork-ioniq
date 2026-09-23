@@ -94,12 +94,14 @@ class TripRecordingService : Service() {
             trip = newTrip.copy(id = id)
             accumulator = TripAccumulator(now)
             app.telemetryBus.recording(true, id)
+            app.telemetryBus.tripStats(0.0, 0.0)
 
             launch {
                 app.obdSource.stream().collect { vehicle ->
                     latestVehicle = vehicle
                     accumulator?.addVehicle(vehicle)
                     app.telemetryBus.vehicle(vehicle, app.obdSource.sourceName)
+                    publishTripStats()
                 }
             }
 
@@ -107,6 +109,7 @@ class TripRecordingService : Service() {
                 app.locationTracker.stream().collectLatest { location ->
                     app.telemetryBus.location(location)
                     updateLocationStats(location)
+                    publishTripStats()
                     persistLocationSample(id, location)
                 }
             }
@@ -143,6 +146,12 @@ class TripRecordingService : Service() {
 
         latestLocation = location
         lastDistanceLocation = location
+    }
+
+    private fun publishTripStats() {
+        val acc = accumulator ?: return
+        val netEnergyKWh = acc.energyDrawnKWh - acc.energyRegeneratedKWh
+        app.telemetryBus.tripStats(distanceKm, netEnergyKWh)
     }
 
     private suspend fun persistLocationSample(tripId: Long, location: LocationTelemetry) {
